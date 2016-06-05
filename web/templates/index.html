@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+<head>
+    <title>Realtime canvas</title>
+</head>
+<body>
+<h1>Canvas мультиплеер</h1>
+<h3>кликните по прямоугольнику, используйте стрелки ← ↑ → </h3>
+<canvas id="canvas" style="border:5px solid #000"></canvas>
+<button width="300px" height="200px" onclick="ctx.clearRect(0,0,width,height);">
+    Очистить
+</button>
+<script>
+function getRandomColor() {
+    var letters = '0123456789ABCDEF'.split('');
+    var color = '#';
+    for (var i = 0; i < 6; i++ ) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+var canvas = document.getElementById("canvas"),
+ctx = canvas.getContext("2d"),
+    width = 800,
+    height = 200,
+    player = {
+      x : width/2,
+      y : height - 5,
+      width : 5,
+      height : 5,
+      speed: 3,
+      velX: 0,
+      velY: 0,
+      jumping: false
+    },
+    keys = [],
+    friction = 0.8,
+    gravity = 0.2;
+    canvas.width = width;
+    canvas.height = height;
+var init = function() {
+    var wsuri, wsproto = "ws";
+    if (window.location.protocol === "file:") {
+        wsuri = wsproto + "://localhost:8888";
+	//wsuri = wsproto + "://127.0.0.1:8888";
+    } else {
+        wsuri = wsproto + "://" + window.location.hostname + ":8888";
+    }
+    if ("WebSocket" in window) {
+        sock = new WebSocket(wsuri);
+        console.log(sock);
+    } else if ("MozWebSocket" in window) {
+        sock = new MozWebSocket(wsuri);
+        console.log(sock);
+    } else {
+        log("Browser doesn't support WebSocket!");
+        window.location = "http://autobahn.ws/unsupportedbrowser";
+    }
+    if (sock) {
+        sock.onopen = function () {
+            console.log("Connected to" + wsuri);
+        function update(){
+          // check keys
+            if (keys[38] || keys[32]) {
+                // up arrow or space
+              if(!player.jumping){
+               player.jumping = true;
+               player.velY = -player.speed*2;
+              }
+            }
+            if (keys[39]) {
+                // right arrow
+                if (player.velX < player.speed) {
+                    player.velX++;
+                 }
+            }
+            if (keys[37]) {
+                // left arrow
+                if (player.velX > -player.speed) {
+                    player.velX--;
+                }
+            }
+            player.velX *= friction;
+            player.velY += gravity;
+            player.x += player.velX;
+            player.y += player.velY;
+            if (player.x >= width-player.width) {
+                player.x = width-player.width;
+            } else if (player.x <= 0) {
+                player.x = 0;
+            }
+            if(player.y >= height-player.height){
+                player.y = height - player.height;
+                player.jumping = false;
+            }
+          //sock.onmessage = function(e) {
+          //    log(e.data, self.width, self.height);
+          //};
+          sock.send(JSON.stringify({current_coord: [player.x, player.y]}));
+       sock.onmessage=function(e){
+            ctx.clearRect(player.x, player.y, 100,-10);
+            ctx.fillStyle = getRandomColor();
+            full_data=JSON.parse(e.data);
+            cube_info=full_data.cube_info;
+            player_ip=full_data.player_ip;
+            for(var index in cube_info){
+    	   	    ctx.fillRect(cube_info[index][0], cube_info[index][1], player.width, player.height);
+                ctx.fillText(player_ip, cube_info[index][0], cube_info[index][1], 3000);
+            }
+	};
+          requestAnimationFrame(update);
+        }
+        document.body.addEventListener("keydown", function(e) {
+            keys[e.keyCode] = true;
+        });
+        document.body.addEventListener("keyup", function(e) {
+            keys[e.keyCode] = false;
+        });
+        /*window.addEventListener("load",function(){
+            update();
+        });*/
+        update();
+        };
+        (function() {
+            var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+            window.requestAnimationFrame = requestAnimationFrame;
+        })();
+        //sock.onclose = function (e) {
+        //    console.log("Connection closed (wasClean = " + e.wasClean + ", code = " + e.code + ", reason = '" + e.reason + "')");
+        //    sock = null;
+        //};
+    }
+};
+init();
+</script>
+<script>
+function log(m, width, height) {
+    ctx.fillRect(m[0], m[1], width, height);
+};
+</script>
+</body>
+</html>

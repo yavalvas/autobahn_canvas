@@ -1,0 +1,6 @@
+*.pyc
+.project
+.pydevproject
+TWISTD-CRASH
+canvas_app
+.settings
